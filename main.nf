@@ -14,6 +14,7 @@ include {COMPUTEMATRIX} from './modules/deeptools_computematrix'
 include {PLOTPROFILE} from './modules/deeptools_plotprofile'
 include {TAGDIR} from './modules/homer_maketagdir'
 include {FINDPEAKS} from './modules/homer_findpeaks'
+include {POS2BED} from './modules/homer_pos2bed'
 
 workflow {
 
@@ -75,7 +76,7 @@ workflow {
    
     FINDPEAKS( ip_ch.join(input_ch) )
 
-    
+    POS2BED(FINDPEAKS.out.peaks)
 
      /*find_peaks_input = ip_ch
         .join(input_ch)
