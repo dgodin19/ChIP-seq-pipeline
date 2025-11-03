@@ -13,6 +13,7 @@ include {PLOTCORRELATION} from './modules/deeptools_plotcorrelation'
 include {COMPUTEMATRIX} from './modules/deeptools_computematrix'
 include {PLOTPROFILE} from './modules/deeptools_plotprofile'
 include {TAGDIR} from './modules/homer_maketagdir'
+include {FINDPEAKS} from './modules/homer_findpeaks'
 
 workflow {
 
@@ -56,5 +57,33 @@ workflow {
     PLOTPROFILE(COMPUTEMATRIX.out)
 
     TAGDIR(BOWTIE2_ALIGN.out.bam)
+
+    ip_ch = TAGDIR.out.tags
+        .filter { it[0].startsWith("IP") }
+        .map { sample, name, path ->
+            def rep = sample.find(/rep\d+/)
+            [rep, sample, name, path]
+        }
+
+    input_ch = TAGDIR.out.tags
+        .filter { it[0].startsWith("INPUT") }
+        .map { sample, name, path ->
+            def rep = sample.find(/rep\d+/)
+            [rep, sample, name, path]
+        }
+
+   
+    FINDPEAKS( ip_ch.join(input_ch) )
+
+    
+
+     /*find_peaks_input = ip_ch
+        .join(input_ch)
+        .map { rep, ip, ctrl ->
+            [rep, ip[1], ip[2], ip[3], ctrl[1], ctrl[2], ctrl[3]]
+        }
+
+    find_peaks_input.view { it }
+    */
 
 }
