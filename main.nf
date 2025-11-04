@@ -15,6 +15,7 @@ include {PLOTPROFILE} from './modules/deeptools_plotprofile'
 include {TAGDIR} from './modules/homer_maketagdir'
 include {FINDPEAKS} from './modules/homer_findpeaks'
 include {POS2BED} from './modules/homer_pos2bed'
+include {BEDTOOLS_INTERSECT} from './modules/bedtools_intersect'
 
 workflow {
 
@@ -44,7 +45,6 @@ workflow {
     .flatten()
     .unique()
     .collect()
-    /*multiqc_ch.view()*/
     MULTIQC(multiqc_ch)
 
     bigwig_summary = BAMCOVERAGE.out.bigwig.map { it[2] }.collect()
@@ -58,10 +58,12 @@ workflow {
     PLOTPROFILE(COMPUTEMATRIX.out)
 
     TAGDIR(BOWTIE2_ALIGN.out.bam)
+    TAGDIR.out.tags.view { "TAGDIR full output: $it" }
 
     ip_ch = TAGDIR.out.tags
         .filter { it[0].startsWith("IP") }
         .map { sample, name, path ->
+            /*println "IP Sample: $sample, Rep: $rep, Path: $path"*/
             def rep = sample.find(/rep\d+/)
             [rep, sample, name, path]
         }
@@ -69,22 +71,46 @@ workflow {
     input_ch = TAGDIR.out.tags
         .filter { it[0].startsWith("INPUT") }
         .map { sample, name, path ->
+            /*println "Input Sample: $sample, Rep: $rep, Path: $path"*/
             def rep = sample.find(/rep\d+/)
             [rep, sample, name, path]
         }
 
    
     FINDPEAKS( ip_ch.join(input_ch) )
+    FINDPEAKS.out.peaks.view { "FINDPEAKS output: $it" }
 
-    POS2BED(FINDPEAKS.out.peaks)
+    FINDPEAKS.out.peaks.map { rep, ip_sample, peaks_file ->
+        println "FINDPEAKS Peak File (${rep}): ${peaks_file}"
+        println "Peak File Contents:"
+        peaks_file.readLines().each { println it }
+        [rep, ip_sample, peaks_file]
+    }
 
-     /*find_peaks_input = ip_ch
-        .join(input_ch)
-        .map { rep, ip, ctrl ->
-            [rep, ip[1], ip[2], ip[3], ctrl[1], ctrl[2], ctrl[3]]
+    peaks_bed = POS2BED(FINDPEAKS.out.peaks)
+    peaks_bed.view { "POS2BED output: $it" }
+
+    POS2BED.out.bed.view { "OUT: $it (${it.getClass()})" }
+
+    /*peaks_bed.map { rep, ip_sample, bed_file ->
+        println "POS2BED File (${rep}): ${bed_file}"
+        println "BED File Contents:"
+        bed_file.readLines().each { println it }
+        [rep, ip_sample, bed_file]
+    }*/
+
+    combined_peaks = peaks_bed
+        .toList()
+        .map { peaks -> 
+            [
+                peaks[1][2],  // rep2 bed file
+                peaks[0][2]   // rep1 bed file
+            ]
         }
 
-    find_peaks_input.view { it }
-    */
+    combined_peaks.view()
+
+    BEDTOOLS_INTERSECT(combined_peaks)
+    
 
 }

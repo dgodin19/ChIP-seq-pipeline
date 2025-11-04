@@ -26,6 +26,6 @@ process BOWTIE2_ALIGN {
    
     stub:
     """
-    touch ${sample}_stub.bam
+    touch ${sample}.bam
     """
 }

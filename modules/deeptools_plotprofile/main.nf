@@ -19,6 +19,6 @@ process PLOTPROFILE {
 
     stub:
     """
-    touch ${sample_id}_signal_coverage.png
+    touch signal_coverage.png
     """
 }

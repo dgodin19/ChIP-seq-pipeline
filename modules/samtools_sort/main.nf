@@ -20,6 +20,6 @@ process SAMTOOLS_SORT {
 
     stub:
     """
-    touch ${sample}.stub.sorted.bam
+    touch ${sample}.sorted.bam
     """
 }

@@ -19,6 +19,6 @@ process SAMTOOLS_IDX {
 
     stub:
     """
-    touch ${sample_id}.sorted.bam.bai
+    touch ${sorted_bam}.bai
     """
 }
