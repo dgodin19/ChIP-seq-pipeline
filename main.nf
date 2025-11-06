@@ -16,13 +16,16 @@ include {TAGDIR} from './modules/homer_maketagdir'
 include {FINDPEAKS} from './modules/homer_findpeaks'
 include {POS2BED} from './modules/homer_pos2bed'
 include {BEDTOOLS_INTERSECT} from './modules/bedtools_intersect'
+include {BEDTOOLS_REMOVE} from './modules/bedtools_remove'
+include {ANNOTATE} from './modules/homer_annotatepeaks'
+include {FIND_MOTIFS_GENOME} from './modules/homer_findmotifsgenome'
 
 workflow {
 
     
     //Here we construct the initial channels we need
     
-    Channel.fromPath(params.subsampled_samplesheet)
+    Channel.fromPath(params.samplesheet)
     | splitCsv( header: true )
     | map{ row -> tuple(row.name, file(row.path)) }
     | set { read_ch }
@@ -41,10 +44,16 @@ workflow {
     .empty()
     .mix(TRIM.out.log.map { it[1] })  
     .mix(SAMTOOLS_FLAGSTAT.out.flagstat.map { it[2] }) 
-    .mix(FASTQC.out.html.map { it[1] })         
+    .mix(FASTQC.out.html.map { it[1] })
+    .mix(FASTQC.out.zip.map { it[1] })  // Add FastQC zip files
     .flatten()
     .unique()
+    .map { 
+        println "MultiQC Input: $it"  // Debug print
+        it 
+    }
     .collect()
+
     MULTIQC(multiqc_ch)
 
     bigwig_summary = BAMCOVERAGE.out.bigwig.map { it[2] }.collect()
@@ -67,6 +76,7 @@ workflow {
             def rep = sample.find(/rep\d+/)
             [rep, sample, name, path]
         }
+    ip_ch.view()
 
     input_ch = TAGDIR.out.tags
         .filter { it[0].startsWith("INPUT") }
@@ -75,7 +85,7 @@ workflow {
             def rep = sample.find(/rep\d+/)
             [rep, sample, name, path]
         }
-
+    input_ch.view()
    
     FINDPEAKS( ip_ch.join(input_ch) )
     FINDPEAKS.out.peaks.view { "FINDPEAKS output: $it" }
@@ -111,6 +121,27 @@ workflow {
     combined_peaks.view()
 
     BEDTOOLS_INTERSECT(combined_peaks)
+
+    BEDTOOLS_REMOVE(BEDTOOLS_INTERSECT.out, params.blacklist)
+    BEDTOOLS_REMOVE.out
+        .map { bed ->
+            def lineCount = bed.readLines().size()
+            println "Number of peaks after blacklist removal: $lineCount"
+            bed
+        }
+        .set { filtered_peaks }
+
+    // Diagnostic printing
+    filtered_peaks.view { "Filtered Peaks File: $it" }
+
+    ANNOTATE(filtered_peaks, params.genome, params.gtf)
+    FIND_MOTIFS_GENOME(filtered_peaks, params.genome)
+
+    // View outputs
     
+    FIND_MOTIFS_GENOME.out[0].view { "Motifs Output: $it" }
+
+    ANNOTATE.out[0].view { "Annotation Output:\n" + it.text }
+    ANNOTATE.out[1].view { "Annotation Log:\n" + it.text }
 
 }

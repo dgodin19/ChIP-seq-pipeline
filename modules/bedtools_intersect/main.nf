@@ -13,20 +13,21 @@ process BEDTOOLS_INTERSECT {
 
     script:
     """
-    # Check input file sizes
-    echo "Bed1 file size:"
-    wc -l ${bed1}
-    echo "Bed2 file size:"
-    wc -l ${bed2}
+    # Check input file contents
+    echo "Bed1 file contents:"
+    cat ${bed1}
+    echo "Bed2 file contents:"
+    cat ${bed2}
 
-    # Only intersect if both files have content
-    if [ -s ${bed1} ] && [ -s ${bed2} ]; then
-        bedtools intersect -a ${bed1} -b ${bed2} > intersect.bed
-    else
-        echo "# No intersection possible" > intersect.bed
-    fi
+    # Convert to standard BED format with proper columns
+    awk 'BEGIN{OFS="\t"} {print \$2, \$3-1, \$3, \$1, \$4, \$5}' ${bed1} > bed1_converted.bed
+    awk 'BEGIN{OFS="\t"} {print \$2, \$3-1, \$3, \$1, \$4, \$5}' ${bed2} > bed2_converted.bed
 
+    # Perform intersection
+    bedtools intersect -a bed1_converted.bed -b bed2_converted.bed > intersect.bed
+    
     # Show intersection results
+    echo "Intersection results:"
     cat intersect.bed
     wc -l intersect.bed
     """
