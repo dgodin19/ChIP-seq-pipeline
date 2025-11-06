@@ -19,6 +19,7 @@ include {BEDTOOLS_INTERSECT} from './modules/bedtools_intersect'
 include {BEDTOOLS_REMOVE} from './modules/bedtools_remove'
 include {ANNOTATE} from './modules/homer_annotatepeaks'
 include {FIND_MOTIFS_GENOME} from './modules/homer_findmotifsgenome'
+include {EXTEND_PEAKS} from './modules/bedtools_extend'
 
 workflow {
 
@@ -134,8 +135,10 @@ workflow {
     // Diagnostic printing
     filtered_peaks.view { "Filtered Peaks File: $it" }
 
-    ANNOTATE(filtered_peaks, params.genome, params.gtf)
-    FIND_MOTIFS_GENOME(filtered_peaks, params.genome)
+    EXTEND_PEAKS(BEDTOOLS_REMOVE.out)
+
+    ANNOTATE(EXTEND_PEAKS.out, params.genome, params.gtf)
+    FIND_MOTIFS_GENOME(EXTEND_PEAKS.out, params.genome)
 
     // View outputs
     
