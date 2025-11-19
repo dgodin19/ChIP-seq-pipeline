@@ -17,8 +17,7 @@ process BOWTIE2_ALIGN {
     bowtie2 -x ${index}/${name} \
     -U ${fastq} \
     -S ${sample}.sam
-    samtools view -bS ${sample}.sam | samtools sort -o ${sample}.bam
-    samtools index ${sample}.bam
+    samtools view -bS ${sample}.sam > ${sample}.bam
     rm ${sample}.sam
 
     
