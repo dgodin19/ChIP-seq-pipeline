@@ -20,9 +20,16 @@ process ANNOTATE {
     # Ensure 6 columns: PeakID, chr, start, end, score, strand
     awk 'BEGIN{OFS="\t"} {print "Peak_"NR, \$1, \$2, \$3, \$5, \$6}' ${filtered_bed} > converted_peaks.txt
 
-    # Run annotation 
-    annotatePeaks.pl converted_peaks.txt ${genome} \
+    # Run annotation with full information
+    annotatePeaks.pl ${filtered_bed} ${genome} \
     -gtf ${gtf} > annotated_peaks.txt 2> annotate_log.txt
+
+    # Prepend the correct header
+    (echo -e "PeakID\tChr\tStart\tEnd\tStrand\tPeak Score\tAnnotation\tGene Name\tGene Alias\tDistance to TSS\tNearest PromoterID\tEntrez ID\tNearest Unigene\tNearest Refseq\tNearest Ensembl\tGene Description\tGene Type"; 
+     cat annotated_peaks.txt) > temp_peaks.txt
+
+    # Replace the original file
+    mv temp_peaks.txt annotated_peaks.txt
 
     # Check output
     echo "Annotation output:"

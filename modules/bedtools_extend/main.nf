@@ -6,14 +6,18 @@ process EXTEND_PEAKS {
     
     input:
     path filtered_bed
+    path genome
 
     output:
     path('extended_peaks.bed')
 
     script:
     """
+    # Extract first 6 columns (chr, start, end, name, score, strand)
+    cut -f1-6 ${filtered_bed} | sort -k1,1 -k2,2n | uniq > clean_peaks.bed
+
     # Extend peaks by 500 base pairs on each side
-    bedtools slop -i ${filtered_bed} -g <(cut -f1-2 ${filtered_bed} | sort -k1,1 -k2,2n | uniq) -b 500 > extended_peaks.bed
+    bedtools slop -i clean_peaks.bed -g ${genome} -b 500 > extended_peaks.bed
     """
 
     stub:

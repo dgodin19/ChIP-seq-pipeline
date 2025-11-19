@@ -18,13 +18,7 @@ process POS2BED {
     cat ${reps_txt}
 
     # Check if the file contains any peak information
-    if grep -q "chr" ${reps_txt}; then
-        # Extract peak information
-        awk 'NR>1 && \$1 ~ /^chr/ {print \$1"\t"\$2"\t"\$3"\tPeak_"NR"\t0\t."}' ${reps_txt} > ${rep}_peaks.bed
-    else
-        # Create a dummy peak if no peaks found
-        echo "chr1\t1000\t2000\t${rep}_Peak1\t0\t+" > ${rep}_peaks.bed
-    fi
+    pos2bed.pl ${reps_txt} > ${rep}_peaks.bed
 
     # Show converted file
     echo "Converted BED File Contents:"

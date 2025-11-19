@@ -20,6 +20,7 @@ include {BEDTOOLS_REMOVE} from './modules/bedtools_remove'
 include {ANNOTATE} from './modules/homer_annotatepeaks'
 include {FIND_MOTIFS_GENOME} from './modules/homer_findmotifsgenome'
 include {EXTEND_PEAKS} from './modules/bedtools_extend'
+include {SAMTOOLS_GENOME} from './modules/samtools_genome'
 
 workflow {
 
@@ -30,7 +31,7 @@ workflow {
     | splitCsv( header: true )
     | map{ row -> tuple(row.name, file(row.path)) }
     | set { read_ch }
-    /*read_ch.view()*/
+    
 
     TRIM(read_ch, params.adapter_fa)
     FASTQC(read_ch)
@@ -73,7 +74,6 @@ workflow {
     ip_ch = TAGDIR.out.tags
         .filter { it[0].startsWith("IP") }
         .map { sample, name, path ->
-            /*println "IP Sample: $sample, Rep: $rep, Path: $path"*/
             def rep = sample.find(/rep\d+/)
             [rep, sample, name, path]
         }
@@ -82,33 +82,25 @@ workflow {
     input_ch = TAGDIR.out.tags
         .filter { it[0].startsWith("INPUT") }
         .map { sample, name, path ->
-            /*println "Input Sample: $sample, Rep: $rep, Path: $path"*/
             def rep = sample.find(/rep\d+/)
             [rep, sample, name, path]
         }
     input_ch.view()
    
     FINDPEAKS( ip_ch.join(input_ch) )
-    FINDPEAKS.out.peaks.view { "FINDPEAKS output: $it" }
+    /*FINDPEAKS.out.peaks.view { "FINDPEAKS output: $it" }
 
     FINDPEAKS.out.peaks.map { rep, ip_sample, peaks_file ->
         println "FINDPEAKS Peak File (${rep}): ${peaks_file}"
         println "Peak File Contents:"
         peaks_file.readLines().each { println it }
         [rep, ip_sample, peaks_file]
-    }
+    }*/
 
     peaks_bed = POS2BED(FINDPEAKS.out.peaks)
     peaks_bed.view { "POS2BED output: $it" }
 
     POS2BED.out.bed.view { "OUT: $it (${it.getClass()})" }
-
-    /*peaks_bed.map { rep, ip_sample, bed_file ->
-        println "POS2BED File (${rep}): ${bed_file}"
-        println "BED File Contents:"
-        bed_file.readLines().each { println it }
-        [rep, ip_sample, bed_file]
-    }*/
 
     combined_peaks = peaks_bed
         .toList()
@@ -131,20 +123,23 @@ workflow {
             bed
         }
         .set { filtered_peaks }
-
+    
     // Diagnostic printing
-    filtered_peaks.view { "Filtered Peaks File: $it" }
+    /*filtered_peaks.view { "Filtered Peaks File: $it" }*/
+    SAMTOOLS_GENOME(params.genome)
 
-    EXTEND_PEAKS(BEDTOOLS_REMOVE.out)
-
+    
+    EXTEND_PEAKS(BEDTOOLS_REMOVE.out, SAMTOOLS_GENOME.out.genome_idx)
+    
+    
     ANNOTATE(EXTEND_PEAKS.out, params.genome, params.gtf)
     FIND_MOTIFS_GENOME(EXTEND_PEAKS.out, params.genome)
-
+    
     // View outputs
     
     FIND_MOTIFS_GENOME.out[0].view { "Motifs Output: $it" }
 
     ANNOTATE.out[0].view { "Annotation Output:\n" + it.text }
     ANNOTATE.out[1].view { "Annotation Log:\n" + it.text }
-
+    
 }

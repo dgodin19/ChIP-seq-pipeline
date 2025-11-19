@@ -19,12 +19,8 @@ process BEDTOOLS_INTERSECT {
     echo "Bed2 file contents:"
     cat ${bed2}
 
-    # Convert to standard BED format with proper columns
-    awk 'BEGIN{OFS="\t"} {print \$2, \$3-1, \$3, \$1, \$4, \$5}' ${bed1} > bed1_converted.bed
-    awk 'BEGIN{OFS="\t"} {print \$2, \$3-1, \$3, \$1, \$4, \$5}' ${bed2} > bed2_converted.bed
-
     # Perform intersection
-    bedtools intersect -a bed1_converted.bed -b bed2_converted.bed > intersect.bed
+    bedtools intersect -a ${bed1} -b ${bed2} -wa -wb > intersect.bed
     
     # Show intersection results
     echo "Intersection results:"
