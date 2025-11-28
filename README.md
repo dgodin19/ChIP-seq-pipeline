@@ -1,32 +1,46 @@
-# Project 3 Nextflow Template
+# ChIP-seq Data Processing and Peak Analysis Pipeline
 
-For this project, remember to keep in a few things:
+This Nextflow pipeline automates the processing, quality assessment, alignment, coverage analysis, peak calling, and annotation of ChIP-seq datasets. It integrates flexible short-read quality control, alignment to reference genomes, downstream coverage and QC reporting, robust peak detection, and comprehensive annotation, supporting multi-replicate and multi-condition experiments.
+Modules Used
 
-1. Most of the required references and files can be found in your `nextflow.config`
-
-2. Make sure you give each process a label to request an appropriate amount of resources
-
-3. Use the singularity containers provided on the website directions for the project
-
-4. I have given you valid stub commands that will let you troubleshoot your workflow logic using the `-stub-run` command
-- The stub-run commands assume that the first element in the tuple from the initial channel is named `sample_id` in processes
-- Ensure that the appropriate inputs for certain processes are a tuple with the first element being the name from the initial channel
-- The findPeaks stub will not be the same as `sample_id`. Remember that you will need to run findPeaks using the paired samples
-(IP_rep1 + INPUT_rep1) and (IP_rep2 + INPUT_rep2). You should name the peak outputs using the replicate (i.e. rep1_peaks.txt and rep2_peaks.txt)
-- You may alter the names used in the stub-run if it's easier for you
-
-The stub runs assume that you have something like below so that it can name the fake files using the sample names - this will ensure
-that your stub runs execute the same number of processes as the full pipeline should.
+The workflow is modular, with each major process defined in the modules/ folder:
 ```
-input:
-tuple val(sample_id), path(file)
+    TRIMMOMATIC (TRIM): Adapter/trimming of sequencing reads
+    FASTQC: Read-level quality control
+    BOWTIE2_BUILD: Reference genome indexing
+    BOWTIE2_ALIGN: Alignment of reads to reference
+    SAMTOOLS_FLAGSTAT: Alignment statistics
+    SAMTOOLS_SORT: BAM sorting and indexing
+    SAMTOOLS_IDX: BAM indexing
+    DEEPCOVERAGE (BAMCOVERAGE): Coverage profiling (bigWig generation)
+    MULTIQC: Aggregated sample-level QC reports
+    DEEPMULTIBWSUMMARY (MULTIBWSUMMARY): multi bigWig summary for downstream correlation/profile analysis
+    DEEPTOOLSCORRELATION (PLOTCORRELATION): Correlation plots across samples
+    DEEPCOMPUTEMATRIX (COMPUTEMATRIX): Matrix for meta-profile analyses
+    DEEPPLOTPROFILE (PLOTPROFILE): Signal profile plots
+    HOMER_MAKETAGDIR (TAGDIR): Tag directory for peak calling (per sample/replicate)
+    HOMER_FINDPEAKS (FINDPEAKS): Peak detection in ChIP-seq data
+    HOMER_POS2BED (POS2BED): Conversion from HOMER peak output to BED format
+    BEDTOOLS_INTERSECT/BEDTOOLS_REMOVE: Bed-level intersection and removal (e.g., blacklist filtering)
+    SAMTOOLS_GENOME: Genome indexing and auxiliary operations
+    BEDTOOLS_EXTEND (EXTEND_PEAKS): Extension of peak regions to user-defined windows
+    HOMER_ANNOTATEPEAKS (ANNOTATE): Genomic annotation of detected peaks
+    HOMER_FINDMOTIFSGENOME (FIND_MOTIFS_GENOME): Motif discovery within peak regions
 ```
+# Folder Structure
 
-5. Use the subsampled data to start out with - you may need to eventually switch to the full data before your
-pipeline is technically complete as sometimes peak calling may fail if not given enough input reads. 
-- When the pipeline is working, change the `params` value in the original channel to the params encoding the
-location of the full_samplesheet.csv
+    main.nf: Central Nextflow pipeline script with workflow orchestration
+    modules/: Contains all individual module definitions (processes)
+    (Optional: configs/, data/, results/ folders, as required by your analysis setup)
 
-6. To remove regions using the blacklist, there are optional flags available in the `bedtools intersect` command
+# Workflow Steps
 
-7. Create a single jupyter notebook that contains all of the results / figures and your write-up
+    Sample Sheet Ingestion: Input channel creation via CSV specifying sample identifiers and file paths.
+    Preprocessing: Adapter removal and quality filtering (TRIM), quality assessment (FASTQC).
+    Reference Preparation: Bowtie2 indexing (BOWTIE2_BUILD), align reads (BOWTIE2_ALIGN).
+    BAM Post-processing: Sorting, indexing, flagstat metrics (SAMTOOLS_*).
+    Coverage & QC: Generate bigWig coverage (BAMCOVERAGE), aggregate MultiQC reports (MULTIQC), correlation and profile plotting (MULTIBWSUMMARY, PLOTCORRELATION, COMPUTEMATRIX, PLOTPROFILE).
+    Peak Calling: Tag directories (TAGDIR), peak detection (FINDPEAKS).
+    Peak Processing: Conversion to BED (POS2BED), replicates merging, intersection, and blacklist removal (BEDTOOLS_INTERSECT, BEDTOOLS_REMOVE).
+    Peak Extension & Annotation: Extend peak regions (EXTEND_PEAKS), annotate to genes (ANNOTATE), discover motifs (FIND_MOTIFS_GENOME).
+    Outputs: Quality reports, processed BAMs, bigWig coverage, peak BEDs, annotation tables, motif results.
